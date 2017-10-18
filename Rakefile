@@ -14,3 +14,12 @@ task :install do |t, args|
   FileUtils.rm Dir.glob('*.gem')
   puts 'completed'
 end
+
+task :publish do |t, args|
+  system 'gem build objcthin.gemspec'
+  path = Dir.glob('*.gem').last
+  command = "gem publish #{path}"
+  system command
+  FileUtils.rm Dir.glob('*.gem')
+  puts 'completed'
+end

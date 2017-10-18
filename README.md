@@ -1,8 +1,8 @@
 # Objcthin
 
-Welcome to your new gem! In this directory, you'll find the files you need to be able to package up your Ruby library into a gem. Put your Ruby code in the file `lib/objcthin`. To experiment with that code, run `bin/console` for an interactive prompt.
+this script can find unused selector and class for you project.app or LinkMap file.
 
-TODO: Delete this and the text above, and describe your gem
+这个脚本可以自动的帮你找出当前项目中不在使用的selector和class，支持debug版本的APP包和LinkMap文件。
 
 ## Installation
 
@@ -22,7 +22,9 @@ Or install it yourself as:
 
 ## Usage
 
-TODO: Write usage instructions here
+find unused selector:
+    
+    $ objcthin findsel apppath(the execuse app path)
 
 ## Development
 
