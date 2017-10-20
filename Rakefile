@@ -18,7 +18,7 @@ end
 task :publish do |t, args|
   system 'gem build objcthin.gemspec'
   path = Dir.glob('*.gem').last
-  command = "gem publish #{path}"
+  command = "gem push #{path}"
   system command
   FileUtils.rm Dir.glob('*.gem')
   puts 'completed'
