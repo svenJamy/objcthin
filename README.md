@@ -25,6 +25,10 @@ Or install it yourself as:
 find unused selector:
     
     $ objcthin findsel apppath(the execuse app path)
+    
+find unused class:
+      
+    $ objcthin findclass apppath(the execuse app path)  
 
 ## Development
 
