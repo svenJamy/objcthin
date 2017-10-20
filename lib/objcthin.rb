@@ -7,12 +7,12 @@ module Objcthin
   class Command < Thor
     desc 'findsel','find unused method sel'
     def findsel(path)
-      Imp::Objc.find_unused_sel(path)
+      Imp::UnusedClass.find_unused_sel(path)
     end
 
     desc 'findclass', 'find unused class list'
     def findclass(path)
-      Imp::Objc.find_unused_class(path)
+      Imp::UnusedClass.find_unused_class(path)
     end
 
     desc'version','print version'
@@ -23,7 +23,7 @@ module Objcthin
 end
 
 module Imp
-  class Objc
+  class UnusedClass
     def self.find_unused_sel(path)
       check_file_type(path)
       all_sels = find_impl_methods(path)
@@ -40,10 +40,6 @@ module Imp
       puts Rainbow('below selector is unused:\n').red
 
       puts unused_sel
-    end
-
-    def self.find_unused_class(path)
-      check_file_type(path)
     end
 
     def self.check_file_type(path)
@@ -156,6 +152,108 @@ module Imp
 
       sels
     end
+  end
+end
+
+
+module Imp
+  class UnusedClass
+
+    def self.check_file_type(path)
+      pathname = Pathname.new(path)
+      unless pathname.exist?
+        raise "#{path} not exit!"
+      end
+
+      cmd = "/usr/bin/file -b #{path}"
+      output = `#{cmd}`
+
+      unless output.include?('Mach-O')
+        raise 'input file not mach-o file type'
+      end
+      puts Rainbow('will begin process...').green
+      pathname
+    end
+
+    def self.split_segment_and_find(path)
+      command = "/usr/bin/otool -arch arm64  -V -o #{path}"
+      output = `#{command}`
+
+      class_list_identifier = 'Contents of (__DATA,__objc_classlist) section'
+      class_refs_identifier = 'Contents of (__DATA,__objc_classrefs) section'
+
+      unless output.include? class_list_identifier
+        raise Rainbow('only support iphone target, please use iphone build...').red
+      end
+
+      patten = /Contents of \(.*\) section/
+      class_refs_patten = /^\d*\w*\s(0x\d*\w*).*/
+
+      class_list = []
+      class_refs = []
+
+      can_add_to_list = false
+      can_add_to_refs = false
+
+      output.each_line do |line|
+        if patten.match?(line)
+          if line.include? class_list_identifier
+            can_add_to_list = true
+            next
+          elsif line.include? class_refs_identifier
+            can_add_to_list = false
+            can_add_to_refs = true
+          else
+            break
+          end
+        end
+
+        if can_add_to_list
+          class_list << line
+        end
+
+        if can_add_to_refs && line
+          class_refs_patten.match(line) do |m|
+            class_refs << m[1]
+          end
+        end
+      end
+
+
+      class_list_address_patten = /^(\d*\w*)\s(0x\d*\w*)/
+      class_name_patten = /name\s0x\d*\w*\s(.*)/
+
+      current_key = nil
+      class_name_address_hash = {}
+
+      class_list.each do |line|
+        if class_list_address_patten.match?(line)
+          current_key = class_list_address_patten.match(line)[2]
+        end
+
+        if class_name_patten.match?(line) && current_key
+          value = class_name_patten.match(line)[1]
+          class_name_address_hash[current_key] = value
+          current_key = nil
+        end
+      end
+
+      result = class_name_address_hash
+      class_refs.each do |line|
+        if class_name_address_hash.keys.include?(line)
+          result.delete(line)
+        end
+      end
+
+      result
+    end
+
+    def self.find_unused_class(path)
+      check_file_type(path)
+      result = split_segment_and_find(path)
+      puts result.values
+    end
 
   end
+
 end
