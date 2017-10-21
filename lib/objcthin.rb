@@ -2,17 +2,20 @@ require "objcthin/version"
 require 'thor'
 require 'rainbow'
 require 'pathname'
+require 'singleton'
 
 module Objcthin
   class Command < Thor
     desc 'findsel','find unused method sel'
+    method_option :prefix, :default => '', :type => :string, :desc => 'the class prefix you want find'
     def findsel(path)
-      Imp::UnusedClass.find_unused_sel(path)
+      Imp::UnusedClass.instance.find_unused_sel(path, options[:prefix])
     end
 
     desc 'findclass', 'find unused class list'
+    method_option :prefix => :string, :default => '', :desc => 'the class prefix you want find'
     def findclass(path)
-      Imp::UnusedClass.find_unused_class(path)
+      Imp::UnusedClass.instance.find_unused_class(path, options[:prefix])
     end
 
     desc'version','print version'
@@ -24,7 +27,10 @@ end
 
 module Imp
   class UnusedClass
-    def self.find_unused_sel(path)
+
+    include Singleton
+
+    def find_unused_sel(path, prefix)
       check_file_type(path)
       all_sels = find_impl_methods(path)
       used_sel = reference_selectors(path)
@@ -37,12 +43,18 @@ module Imp
         end
       end
 
-      puts Rainbow('below selector is unused:\n').red
+      puts Rainbow('below selector is unused:').red
+      if prefix
+        unused_sel.select! do |classname_selector|
+          current_prefix = classname_selector.byteslice(2, prefix.length)
+          current_prefix == prefix
+        end
+      end
 
       puts unused_sel
     end
 
-    def self.check_file_type(path)
+    def check_file_type(path)
       pathname = Pathname.new(path)
       unless pathname.exist?
         raise "#{path} not exit!"
@@ -58,19 +70,16 @@ module Imp
       pathname
     end
 
-    def self.find_impl_methods(path)
-
-      app = %w[1 2]
-
+    def find_impl_methods(path)
       apple_protocols = [
           'tableView:canEditRowAtIndexPath:',
-      'commitEditingStyle:forRowAtIndexPath:',
-      'tableView:viewForHeaderInSection:',
-      'tableView:cellForRowAtIndexPath:',
-      'tableView:canPerformAction:forRowAtIndexPath:withSender:',
-      'tableView:performAction:forRowAtIndexPath:withSender:',
-      'tableView:accessoryButtonTappedForRowWithIndexPath:',
-      'tableView:willDisplayCell:forRowAtIndexPath:',
+          'commitEditingStyle:forRowAtIndexPath:',
+          'tableView:viewForHeaderInSection:',
+          'tableView:cellForRowAtIndexPath:',
+          'tableView:canPerformAction:forRowAtIndexPath:withSender:',
+          'tableView:performAction:forRowAtIndexPath:withSender:',
+          'tableView:accessoryButtonTappedForRowWithIndexPath:',
+          'tableView:willDisplayCell:forRowAtIndexPath:',
           'tableView:commitEditingStyle:forRowAtIndexPath:',
           'tableView:didEndDisplayingCell:forRowAtIndexPath:',
           'tableView:didEndDisplayingHeaderView:forSection:',
@@ -81,32 +90,40 @@ module Imp
           'tableView:willDisplayHeaderView:forSection:',
           'tableView:willSelectRowAtIndexPath:',
           'willMoveToSuperview:',
-      'numberOfSectionsInTableView:',
-      'actionSheet:willDismissWithButtonIndex:',
-      'gestureRecognizer:shouldReceiveTouch:',
-      'gestureRecognizer:shouldRecognizeSimultaneouslyWithGestureRecognizer:',
-      'gestureRecognizer:shouldReceiveTouch:',
-      'imagePickerController:didFinishPickingMediaWithInfo:',
-      'imagePickerControllerDidCancel:',
-      'animateTransition:',
-      'animationControllerForDismissedController:',
-      'animationControllerForPresentedController:presentingController:sourceController:',
-      'navigationController:animationControllerForOperation:fromViewController:toViewController:',
-      'navigationController:interactionControllerForAnimationController:',
-      'alertView:didDismissWithButtonIndex:',
-      'URLSession:didBecomeInvalidWithError:',
-      'setDownloadTaskDidResumeBlock:',
-      'tabBarController:didSelectViewController:',
-      'tabBarController:shouldSelectViewController:',
-      'applicationDidReceiveMemoryWarning:',
-      'application:didRegisterForRemoteNotificationsWithDeviceToken:',
-      'application:didFailToRegisterForRemoteNotificationsWithError:',
-      'application:didReceiveRemoteNotification:fetchCompletionHandler:',
-      'application:didRegisterUserNotificationSettings:',
-      'application:performActionForShortcutItem:completionHandler:',
-      'application:continueUserActivity:restorationHandler:'].freeze
+          'scrollViewDidEndScrollingAnimation:',
+          'scrollViewDidZoom',
+          'scrollViewWillEndDragging:withVelocity:targetContentOffset:',
+          'searchBarTextDidEndEditing:',
+          'searchBar:selectedScopeButtonIndexDidChange:',
+          'shouldInvalidateLayoutForBoundsChange:',
+          'textFieldShouldReturn:',
+          'numberOfSectionsInTableView:',
+          'actionSheet:willDismissWithButtonIndex:',
+          'gestureRecognizer:shouldReceiveTouch:',
+          'gestureRecognizer:shouldRecognizeSimultaneouslyWithGestureRecognizer:',
+          'gestureRecognizer:shouldReceiveTouch:',
+          'imagePickerController:didFinishPickingMediaWithInfo:',
+          'imagePickerControllerDidCancel:',
+          'animateTransition:',
+          'animationControllerForDismissedController:',
+          'animationControllerForPresentedController:presentingController:sourceController:',
+          'navigationController:animationControllerForOperation:fromViewController:toViewController:',
+          'navigationController:interactionControllerForAnimationController:',
+          'alertView:didDismissWithButtonIndex:',
+          'URLSession:didBecomeInvalidWithError:',
+          'setDownloadTaskDidResumeBlock:',
+          'tabBarController:didSelectViewController:',
+          'tabBarController:shouldSelectViewController:',
+          'applicationDidReceiveMemoryWarning:',
+          'application:didRegisterForRemoteNotificationsWithDeviceToken:',
+          'application:didFailToRegisterForRemoteNotificationsWithError:',
+          'application:didReceiveRemoteNotification:fetchCompletionHandler:',
+          'application:didRegisterUserNotificationSettings:',
+          'application:performActionForShortcutItem:completionHandler:',
+          'application:continueUserActivity:restorationHandler:'].freeze
 
       # imp -[class sel]
+
       sub_patten = /[+|-]\[.+\s(.+)\]/
       patten = /\s*imp\s*(#{sub_patten})/
       sel_set_patten = /set[A-Z].*:$/
@@ -139,7 +156,7 @@ module Imp
       imp.sort
     end
 
-    def self.reference_selectors(path)
+    def reference_selectors(path)
       patten = /__TEXT:__objc_methname:(.+)/
       output = `/usr/bin/otool -v -s __DATA __objc_selrefs #{path}`
 
@@ -159,7 +176,9 @@ end
 module Imp
   class UnusedClass
 
-    def self.check_file_type(path)
+    include Singleton
+
+    def check_file_type(path)
       pathname = Pathname.new(path)
       unless pathname.exist?
         raise "#{path} not exit!"
@@ -175,8 +194,21 @@ module Imp
       pathname
     end
 
-    def self.split_segment_and_find(path)
-      command = "/usr/bin/otool -arch arm64  -V -o #{path}"
+    def split_segment_and_find(path, prefix)
+
+      arch_command = "lipo -info #{path}"
+      arch_output = `#{arch_command}`
+
+      arch = 'arm64'
+      if arch_output.include? 'arm64'
+        arch = 'arm64'
+      elsif arch_output.include? 'x86_64'
+        arch = 'x86_64'
+      elsif arch_output.include? 'armv7'
+        arch = 'armv7'
+      end
+
+      command = "/usr/bin/otool -arch #{arch}  -V -o #{path}"
       output = `#{command}`
 
       class_list_identifier = 'Contents of (__DATA,__objc_classlist) section'
@@ -248,9 +280,9 @@ module Imp
       result
     end
 
-    def self.find_unused_class(path)
+    def find_unused_class(path, prefix)
       check_file_type(path)
-      result = split_segment_and_find(path)
+      result = split_segment_and_find(path, prefix)
       puts result.values
     end
 
