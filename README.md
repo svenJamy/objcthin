@@ -6,6 +6,10 @@ this script can find unused selector and class for you project.app or LinkMap fi
 
 ## Installation
 
+this script use ruby 2.4.* above, please check you ruby version:
+
+    $ ruby -v
+
 Add this line to your application's Gemfile:
 
 ```ruby
@@ -26,9 +30,15 @@ find unused selector:
     
     $ objcthin findsel apppath(the execuse app path)
     
+    # add the special prefix
+    $ objcthin findsel apppath(the execuse app path) --prefix='UI'
+    
 find unused class:
       
-    $ objcthin findclass apppath(the execuse app path)  
+    $ objcthin findclass apppath(the execuse app path) 
+     
+    # add the special prefix
+    $ objcthin findclass apppath(the execuse app path) --prefix='UI'
 
 ## Development
 

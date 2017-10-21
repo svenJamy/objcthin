@@ -190,7 +190,7 @@ module Imp
       unless output.include?('Mach-O')
         raise 'input file not mach-o file type'
       end
-      puts Rainbow('will begin process...').green
+      #puts Rainbow('will begin process...').green
       pathname
     end
 
@@ -219,10 +219,16 @@ module Imp
       end
 
       patten = /Contents of \(.*\) section/
-      class_refs_patten = /^\d*\w*\s(0x\d*\w*).*/
+
+      name_patten_string = '.*'
+      if prefix.length > 0
+        name_patten_string = "#{prefix}.*"
+      end
+      vmaddress_to_class_name_patten = /^(\d*\w*)\s(0x\d*\w*)\s_OBJC_CLASS_\$_(#{name_patten_string})/
 
       class_list = []
       class_refs = []
+      used_vmaddress_to_class_name_hash = {}
 
       can_add_to_list = false
       can_add_to_refs = false
@@ -245,35 +251,29 @@ module Imp
         end
 
         if can_add_to_refs && line
-          class_refs_patten.match(line) do |m|
-            class_refs << m[1]
+          vmaddress_to_class_name_patten.match(line) do |m|
+            unless used_vmaddress_to_class_name_hash[m[2]]
+              used_vmaddress_to_class_name_hash[m[2]] = m[3]
+            end
           end
         end
       end
 
+      # remove cocoapods class
+      podsd_dummy = 'PodsDummy'
 
-      class_list_address_patten = /^(\d*\w*)\s(0x\d*\w*)/
-      class_name_patten = /name\s0x\d*\w*\s(.*)/
-
-      current_key = nil
-      class_name_address_hash = {}
-
+      vmaddress_to_class_name_hash = {}
       class_list.each do |line|
-        if class_list_address_patten.match?(line)
-          current_key = class_list_address_patten.match(line)[2]
-        end
-
-        if class_name_patten.match?(line) && current_key
-          value = class_name_patten.match(line)[1]
-          class_name_address_hash[current_key] = value
-          current_key = nil
+        next if line.include? podsd_dummy
+        vmaddress_to_class_name_patten.match(line) do |m|
+          vmaddress_to_class_name_hash[m[2]] = m[3]
         end
       end
 
-      result = class_name_address_hash
-      class_refs.each do |line|
-        if class_name_address_hash.keys.include?(line)
-          result.delete(line)
+      result = vmaddress_to_class_name_hash
+      vmaddress_to_class_name_hash.each do |key, value|
+        if used_vmaddress_to_class_name_hash.keys.include?(key)
+          result.delete(key)
         end
       end
 
