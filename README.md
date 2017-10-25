@@ -2,7 +2,7 @@
 
 this script can find unused selector and class for you project.app or LinkMap file.
 
-这个脚本可以自动的帮你找出当前项目中不在使用的selector和class，支持debug版本的APP包和LinkMap文件。
+这个脚本可以自动的帮你找出当前项目中不在使用的selector和class，支持debug版本的APP包。
 
 ## Installation
 

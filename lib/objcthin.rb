@@ -9,11 +9,11 @@ module Objcthin
     desc 'findsel','find unused method sel'
     method_option :prefix, :default => '', :type => :string, :desc => 'the class prefix you want find'
     def findsel(path)
-      Imp::UnusedClass.instance.find_unused_sel(path, options[:prefix])
+      Imp::UnusedSel.instance.find_unused_sel(path, options[:prefix])
     end
 
     desc 'findclass', 'find unused class list'
-    method_option :prefix => :string, :default => '', :desc => 'the class prefix you want find'
+    method_option :prefix, :default => '', :type => :string, :desc => 'the class prefix you want find'
     def findclass(path)
       Imp::UnusedClass.instance.find_unused_class(path, options[:prefix])
     end
@@ -26,7 +26,7 @@ module Objcthin
 end
 
 module Imp
-  class UnusedClass
+  class UnusedSel
 
     include Singleton
 
@@ -178,6 +178,12 @@ module Imp
 
     include Singleton
 
+    def find_unused_class(path, prefix)
+      check_file_type(path)
+      result = split_segment_and_find(path, prefix)
+      puts result.values
+    end
+
     def check_file_type(path)
       pathname = Pathname.new(path)
       unless pathname.exist?
@@ -221,9 +227,10 @@ module Imp
       patten = /Contents of \(.*\) section/
 
       name_patten_string = '.*'
-      if prefix.length > 0
+      unless prefix.empty?
         name_patten_string = "#{prefix}.*"
       end
+
       vmaddress_to_class_name_patten = /^(\d*\w*)\s(0x\d*\w*)\s_OBJC_CLASS_\$_(#{name_patten_string})/
 
       class_list = []
@@ -279,13 +286,5 @@ module Imp
 
       result
     end
-
-    def find_unused_class(path, prefix)
-      check_file_type(path)
-      result = split_segment_and_find(path, prefix)
-      puts result.values
-    end
-
   end
-
-end
+  end
